@@ -1,30 +1,29 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+import socket
+from typing import TYPE_CHECKING
+from unittest.mock import Mock, patch
 
 import pytest
-import socket
-
 from amqp import RecoverableConnectionError
-from case import ContextMock, Mock, patch
 
 from kombu import common
-from kombu.common import (
-    Broadcast, maybe_declare,
-    send_reply, collect_replies,
-    declaration_cached, ignore_errors,
-    QoS, PREFETCH_COUNT_MAX, generate_oid
-)
+from kombu.common import (PREFETCH_COUNT_MAX, Broadcast, QoS, collect_replies,
+                          declaration_cached, generate_oid, ignore_errors,
+                          maybe_declare, send_reply)
+from t.mocks import ContextMock, MockPool
 
-from t.mocks import MockPool
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 def test_generate_oid():
     from uuid import NAMESPACE_OID
-    from kombu.five import bytes_if_py2
 
     instance = Mock()
 
     args = (1, 1001, 2001, id(instance))
-    ent = bytes_if_py2('%x-%x-%x-%x' % args)
+    ent = '%x-%x-%x-%x' % args
 
     with patch('kombu.common.uuid3') as mock_uuid3, \
             patch('kombu.common.uuid5') as mock_uuid5:
@@ -198,6 +197,21 @@ class test_maybe_declare:
         # Then: the connection client used ensure to ensure the retry policy
         assert channel.connection.client.ensure.call_count
 
+    def test_with_retry_dropped_connection(self):
+        # Given: A mock Channel and mock entity
+        channel = self._get_mock_channel()
+        # Given: A mock Entity that is already bound
+        entity = self._get_mock_entity(
+            is_bound=True, can_cache_declaration=True)
+        entity.channel = channel
+        assert entity.is_bound, "Expected entity is bound to begin this test."
+        # When: Entity channel connection has gone away
+        entity.channel.connection = None
+        # When: calling maybe_declare with retry
+        # Then: the RecoverableConnectionError should be raised
+        with pytest.raises(RecoverableConnectionError):
+            maybe_declare(entity, channel, retry=True)
+
 
 class test_replies:
 
@@ -318,7 +332,7 @@ class test_insured:
         conn.ensure_connection.assert_called_with(errback=custom_errback)
 
 
-class MockConsumer(object):
+class MockConsumer:
     consumers = set()
 
     def __init__(self, channel, queues=None, callbacks=None, **kwargs):
@@ -330,13 +344,18 @@ class MockConsumer(object):
         self.consumers.add(self)
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.consumers.discard(self)
 
 
 class test_itermessages:
 
-    class MockConnection(object):
+    class MockConnection:
         should_raise_timeout = False
 
         def drain_events(self, **kwargs):
@@ -388,7 +407,7 @@ class test_QoS:
     class _QoS(QoS):
         def __init__(self, value):
             self.value = value
-            QoS.__init__(self, None, value)
+            super().__init__(None, value)
 
         def set(self, value):
             return value

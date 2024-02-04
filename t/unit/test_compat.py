@@ -1,27 +1,25 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+from unittest.mock import Mock, patch
 
 import pytest
 
-from case import Mock, patch
-
-from kombu import Connection, Exchange, Queue
-from kombu import compat
-
-from t.mocks import Transport, Channel
+from kombu import Connection, Exchange, Queue, compat
+from t.mocks import Channel, Transport
 
 
 class test_misc:
 
     def test_iterconsume(self):
 
-        class MyConnection(object):
+        class MyConnection:
             drained = 0
 
             def drain_events(self, *args, **kwargs):
                 self.drained += 1
                 return self.drained
 
-        class Consumer(object):
+        class Consumer:
             active = False
 
             def consume(self, *args, **kwargs):
@@ -119,12 +117,14 @@ class test_Publisher:
         pub.close()
 
     def test__enter__exit__(self):
-        pub = compat.Publisher(self.connection,
-                               exchange='test_Publisher_send',
-                               routing_key='rkey')
-        x = pub.__enter__()
-        assert x is pub
-        x.__exit__()
+        pub = compat.Publisher(
+            self.connection,
+            exchange='test_Publisher_send',
+            routing_key='rkey'
+        )
+        with pub as x:
+            assert x is pub
+
         assert pub._closed
 
 
@@ -162,11 +162,14 @@ class test_Consumer:
         assert q2.exchange.auto_delete
 
     def test__enter__exit__(self, n='test__enter__exit__'):
-        c = compat.Consumer(self.connection, queue=n, exchange=n,
-                            routing_key='rkey')
-        x = c.__enter__()
-        assert x is c
-        x.__exit__()
+        c = compat.Consumer(
+            self.connection,
+            queue=n,
+            exchange=n,
+            routing_key='rkey'
+        )
+        with c as x:
+            assert x is c
         assert c._closed
 
     def test_revive(self, n='test_revive'):
@@ -238,8 +241,7 @@ class test_Consumer:
         class C(compat.Consumer):
 
             def iterconsume(self, limit=None):
-                for i in range(limit):
-                    yield i
+                yield from range(limit)
 
         c = C(self.connection,
               queue=n, exchange=n, routing_key='rkey')

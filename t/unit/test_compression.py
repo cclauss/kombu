@@ -1,10 +1,8 @@
-from __future__ import absolute_import, unicode_literals
-
-import pytest
+from __future__ import annotations
 
 import sys
 
-from case import mock, skip
+import pytest
 
 from kombu import compression
 
@@ -14,8 +12,8 @@ class test_compression:
     def test_encoders__gzip(self):
         assert 'application/x-gzip' in compression.encoders()
 
-    @skip.unless_module('bz2')
     def test_encoders__bz2(self):
+        pytest.importorskip('bz2')
         assert 'application/x-bz2' in compression.encoders()
 
     def test_encoders__brotli(self):
@@ -25,11 +23,6 @@ class test_compression:
 
     def test_encoders__lzma(self):
         pytest.importorskip('lzma')
-
-        assert 'application/x-lzma' in compression.encoders()
-
-    def test_encoders__backports_lzma(self):
-        pytest.importorskip('backports.lzma')
 
         assert 'application/x-lzma' in compression.encoders()
 
@@ -57,18 +50,12 @@ class test_compression:
 
         text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
         c, ctype = compression.compress(text, 'brotli')
-
-    def test_compress__decompress__lzma(self):
-        pytest.importorskip('lzma')
-
-        text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
-        c, ctype = compression.compress(text, 'lzma')
         assert text != c
         d = compression.decompress(c, ctype)
         assert d == text
 
-    def test_compress__decompress__backports_lzma(self):
-        pytest.importorskip('backports.lzma')
+    def test_compress__decompress__lzma(self):
+        pytest.importorskip('lzma')
 
         text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
         c, ctype = compression.compress(text, 'lzma')
@@ -85,12 +72,22 @@ class test_compression:
         d = compression.decompress(c, ctype)
         assert d == text
 
-    @mock.mask_modules('bz2')
-    def test_no_bz2(self):
+    @pytest.mark.masked_modules('bz2')
+    def test_no_bz2(self, mask_modules):
         c = sys.modules.pop('kombu.compression')
         try:
             import kombu.compression
             assert not hasattr(kombu.compression, 'bz2')
+        finally:
+            if c is not None:
+                sys.modules['kombu.compression'] = c
+
+    @pytest.mark.masked_modules('lzma')
+    def test_no_lzma(self, mask_modules):
+        c = sys.modules.pop('kombu.compression')
+        try:
+            import kombu.compression
+            assert not hasattr(kombu.compression, 'lzma')
         finally:
             if c is not None:
                 sys.modules['kombu.compression'] = c

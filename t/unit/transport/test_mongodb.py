@@ -1,16 +1,27 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import datetime
+from queue import Empty
+from unittest.mock import MagicMock, call, patch
+
 import pytest
 
-from case import MagicMock, call, patch, skip
-
 from kombu import Connection
-from kombu.five import Empty
+
+pymongo = pytest.importorskip('pymongo')
+
+# must import following after above validation to avoid error
+# and skip tests if missing
+# these are used to define real spec of the corresponding mocks,
+# to ensure called methods exist in real objects
+# pylint: disable=C0413
+from pymongo.collection import Collection  # isort:skip # noqa: E402
+from pymongo.database import Database  # isort:skip # noqa: E402
+from kombu.transport.mongodb import BroadcastCursor  # isort:skip # noqa: E402
 
 
 def _create_mock_connection(url='', **kwargs):
-    from kombu.transport import mongodb  # noqa
+    from kombu.transport import mongodb
 
     class _Channel(mongodb.Channel):
         # reset _fanout_queues for each instance
@@ -20,7 +31,9 @@ def _create_mock_connection(url='', **kwargs):
         now = datetime.datetime.utcnow()
 
         def _create_client(self):
-            mock = MagicMock(name='client')
+            # not really a 'MongoClient',
+            # but an actual pre-established Database connection
+            mock = MagicMock(name='client', spec=Database)
 
             # we need new mock object for every collection
             def get_collection(name):
@@ -28,7 +41,9 @@ def _create_mock_connection(url='', **kwargs):
                     return self.collections[name]
                 except KeyError:
                     mock = self.collections[name] = MagicMock(
-                        name='collection:%s' % name)
+                        name='collection:%s' % name,
+                        spec=Collection,
+                    )
 
                     return mock
 
@@ -45,7 +60,6 @@ def _create_mock_connection(url='', **kwargs):
     return Connection(url, transport=Transport, **kwargs)
 
 
-@skip.unless_module('pymongo')
 class test_mongodb_uri_parsing:
 
     def test_defaults(self):
@@ -64,6 +78,21 @@ class test_mongodb_uri_parsing:
         hostname, dbname, options = channel._parse_uri()
 
         assert dbname == 'kombu_default'
+
+    def test_custom_port(self):
+        url = 'mongodb://localhost:27018'
+        channel = _create_mock_connection(url).default_channel
+        hostname, dbname, options = channel._parse_uri()
+
+        assert hostname == 'mongodb://localhost:27018'
+
+    def test_replicaset_hosts(self):
+        url = 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'  # noqa
+        channel = _create_mock_connection(url).default_channel
+        hostname, dbname, options = channel._parse_uri()
+
+        assert hostname == 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'  # noqa
+        assert options['replicaset'] == 'test_rs'
 
     def test_custom_database(self):
         url = 'mongodb://localhost/dbname'
@@ -107,7 +136,7 @@ class BaseMongoDBChannelCase:
         else:
             method.side_effect = values
 
-    def declare_droadcast_queue(self, queue):
+    def declare_broadcast_queue(self, queue):
         self.channel.exchange_declare('fanout_exchange', type='fanout')
 
         self.channel._queue_bind('fanout_exchange', 'foo', '*', queue)
@@ -118,9 +147,9 @@ class BaseMongoDBChannelCase:
         return self.channel._broadcast_cursors[queue]
 
     def set_broadcast_return_value(self, queue, *values):
-        self.declare_droadcast_queue(queue)
+        self.declare_broadcast_queue(queue)
 
-        cursor = MagicMock(name='cursor')
+        cursor = MagicMock(name='cursor', spec=BroadcastCursor)
         cursor.__iter__.return_value = iter(values)
 
         self.channel._broadcast_cursors[queue]._cursor = iter(cursor)
@@ -138,7 +167,6 @@ class BaseMongoDBChannelCase:
         self.assert_operation_has_calls(cname, mname, [call(*args, **kwargs)])
 
 
-@skip.unless_module('pymongo')
 class test_mongodb_channel(BaseMongoDBChannelCase):
 
     def setup(self):
@@ -152,18 +180,16 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         self.channel.client.assert_not_called()
 
     def test_get(self):
-        import pymongo
 
-        self.set_operation_return_value('messages', 'find_and_modify', {
+        self.set_operation_return_value('messages', 'find_one_and_delete', {
             '_id': 'docId', 'payload': '{"some": "data"}',
         })
 
         event = self.channel._get('foobar')
         self.assert_collection_accessed('messages')
         self.assert_operation_called_with(
-            'messages', 'find_and_modify',
-            query={'queue': 'foobar'},
-            remove=True,
+            'messages', 'find_one_and_delete',
+            {'queue': 'foobar'},
             sort=[
                 ('priority', pymongo.ASCENDING),
             ],
@@ -171,7 +197,11 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
 
         assert event == {'some': 'data'}
 
-        self.set_operation_return_value('messages', 'find_and_modify', None)
+        self.set_operation_return_value(
+            'messages',
+            'find_one_and_delete',
+            None,
+        )
         with pytest.raises(Empty):
             self.channel._get('foobar')
 
@@ -191,37 +221,37 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         self.channel._put('foobar', {'some': 'data'})
 
         self.assert_collection_accessed('messages')
-        self.assert_operation_called_with('messages', 'insert', {
+        self.assert_operation_called_with('messages', 'insert_one', {
             'queue': 'foobar',
             'priority': 9,
             'payload': '{"some": "data"}',
         })
 
     def test_put_fanout(self):
-        self.declare_droadcast_queue('foobar')
+        self.declare_broadcast_queue('foobar')
 
         self.channel._put_fanout('foobar', {'some': 'data'}, 'foo')
 
         self.assert_collection_accessed('messages.broadcast')
-        self.assert_operation_called_with('broadcast', 'insert', {
+        self.assert_operation_called_with('broadcast', 'insert_one', {
             'queue': 'foobar', 'payload': '{"some": "data"}',
         })
 
     def test_size(self):
-        self.set_operation_return_value('messages', 'find.count', 77)
+        self.set_operation_return_value('messages', 'count_documents', 77)
 
         result = self.channel._size('foobar')
         self.assert_collection_accessed('messages')
         self.assert_operation_called_with(
-            'messages', 'find', {'queue': 'foobar'},
+            'messages', 'count_documents', {'queue': 'foobar'},
         )
 
         assert result == 77
 
     def test_size_fanout(self):
-        self.declare_droadcast_queue('foobar')
+        self.declare_broadcast_queue('foobar')
 
-        cursor = MagicMock(name='cursor')
+        cursor = MagicMock(name='cursor', spec=BroadcastCursor)
         cursor.get_size.return_value = 77
         self.channel._broadcast_cursors['foobar'] = cursor
 
@@ -230,20 +260,20 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         assert result == 77
 
     def test_purge(self):
-        self.set_operation_return_value('messages', 'find.count', 77)
+        self.set_operation_return_value('messages', 'count_documents', 77)
 
         result = self.channel._purge('foobar')
         self.assert_collection_accessed('messages')
         self.assert_operation_called_with(
-            'messages', 'remove', {'queue': 'foobar'},
+            'messages', 'delete_many', {'queue': 'foobar'},
         )
 
         assert result == 77
 
     def test_purge_fanout(self):
-        self.declare_droadcast_queue('foobar')
+        self.declare_broadcast_queue('foobar')
 
-        cursor = MagicMock(name='cursor')
+        cursor = MagicMock(name='cursor', spec=BroadcastCursor)
         cursor.get_size.return_value = 77
         self.channel._broadcast_cursors['foobar'] = cursor
 
@@ -279,11 +309,11 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         self.channel._queue_bind('test_exchange', 'foo', '*', 'foo')
         self.assert_collection_accessed('messages.routing')
         self.assert_operation_called_with(
-            'routing', 'update',
+            'routing', 'update_one',
             {'queue': 'foo', 'pattern': '*',
              'routing_key': 'foo', 'exchange': 'test_exchange'},
-            {'queue': 'foo', 'pattern': '*',
-             'routing_key': 'foo', 'exchange': 'test_exchange'},
+            {'$set': {'queue': 'foo', 'pattern': '*',
+             'routing_key': 'foo', 'exchange': 'test_exchange'}},
             upsert=True,
         )
 
@@ -291,13 +321,13 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
         self.channel.queue_delete('foobar')
         self.assert_collection_accessed('messages.routing')
         self.assert_operation_called_with(
-            'routing', 'remove', {'queue': 'foobar'},
+            'routing', 'delete_many', {'queue': 'foobar'},
         )
 
     def test_queue_delete_fanout(self):
-        self.declare_droadcast_queue('foobar')
+        self.declare_broadcast_queue('foobar')
 
-        cursor = MagicMock(name='cursor')
+        cursor = MagicMock(name='cursor', spec=BroadcastCursor)
         self.channel._broadcast_cursors['foobar'] = cursor
 
         self.channel.queue_delete('foobar')
@@ -316,24 +346,45 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
             'messages.broadcast', capped=True, size=100000,
         )
 
+    def test_create_broadcast_exists(self):
+        # simulate already created collection
+        self.channel.client.list_collection_names.return_value = [
+            'messages.broadcast'
+        ]
+
+        broadcast = self.channel._create_broadcast(self.channel.client)
+        self.channel.client.create_collection.assert_not_called()
+        assert broadcast is None  # not returned since not created
+
+    def test_get_broadcast_cursor_created(self):
+        self.channel._fanout_queues['foobar'] = 'fanout_exchange'
+        created_cursor = self.channel._get_broadcast_cursor('foobar')
+        cached_cursor = self.channel._broadcast_cursors['foobar']
+        assert cached_cursor is created_cursor
+
+    def test_get_broadcast_cursor_exists(self):
+        self.declare_broadcast_queue('foobar')
+        cached_cursor = self.channel._broadcast_cursors['foobar']
+        getter_cursor = self.channel._get_broadcast_cursor('foobar')
+        assert cached_cursor is getter_cursor
+
     def test_ensure_indexes(self):
         self.channel._ensure_indexes(self.channel.client)
 
         self.assert_operation_called_with(
-            'messages', 'ensure_index',
+            'messages', 'create_index',
             [('queue', 1), ('priority', 1), ('_id', 1)],
             background=True,
         )
         self.assert_operation_called_with(
-            'broadcast', 'ensure_index',
+            'broadcast', 'create_index',
             [('queue', 1)],
         )
         self.assert_operation_called_with(
-            'routing', 'ensure_index', [('queue', 1), ('exchange', 1)],
+            'routing', 'create_index', [('queue', 1), ('exchange', 1)],
         )
 
     def test_create_broadcast_cursor(self):
-        import pymongo
 
         with patch.object(pymongo, 'version_tuple', (2, )):
             self.channel._create_broadcast_cursor(
@@ -360,7 +411,6 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
             )
 
     def test_open_rc_version(self):
-        import pymongo
 
         def server_info(self):
             return {'version': '3.6.0-rc'}
@@ -369,7 +419,6 @@ class test_mongodb_channel(BaseMongoDBChannelCase):
             self.channel._open()
 
 
-@skip.unless_module('pymongo')
 class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
 
     def setup(self):
@@ -387,38 +436,35 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.channel._new_queue('foobar')
 
         self.assert_operation_called_with(
-            'queues', 'update',
+            'queues', 'update_one',
             {'_id': 'foobar'},
-            {'_id': 'foobar', 'options': {}, 'expire_at': None},
+            {'$set': {'_id': 'foobar', 'options': {}, 'expire_at': None}},
             upsert=True,
         )
 
     def test_get(self):
-        import pymongo
 
         self.set_operation_return_value('queues', 'find_one', {
             '_id': 'docId', 'options': {'arguments': {'x-expires': 777}},
         })
 
-        self.set_operation_return_value('messages', 'find_and_modify', {
+        self.set_operation_return_value('messages', 'find_one_and_delete', {
             '_id': 'docId', 'payload': '{"some": "data"}',
         })
 
         self.channel._get('foobar')
         self.assert_collection_accessed('messages', 'messages.queues')
         self.assert_operation_called_with(
-            'messages', 'find_and_modify',
-            query={'queue': 'foobar'},
-            remove=True,
+            'messages', 'find_one_and_delete',
+            {'queue': 'foobar'},
             sort=[
                 ('priority', pymongo.ASCENDING),
             ],
         )
         self.assert_operation_called_with(
-            'routing', 'update',
+            'routing', 'update_many',
             {'queue': 'foobar'},
             {'$set': {'expire_at': self.expire_at}},
-            multi=True,
         )
 
     def test_put(self):
@@ -429,7 +475,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.channel._put('foobar', {'some': 'data'})
 
         self.assert_collection_accessed('messages')
-        self.assert_operation_called_with('messages', 'insert', {
+        self.assert_operation_called_with('messages', 'insert_one', {
             'queue': 'foobar',
             'priority': 9,
             'payload': '{"some": "data"}',
@@ -444,12 +490,14 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.channel._queue_bind('test_exchange', 'foo', '*', 'foo')
         self.assert_collection_accessed('messages.routing')
         self.assert_operation_called_with(
-            'routing', 'update',
+            'routing', 'update_one',
             {'queue': 'foo', 'pattern': '*',
              'routing_key': 'foo', 'exchange': 'test_exchange'},
-            {'queue': 'foo', 'pattern': '*',
-             'routing_key': 'foo', 'exchange': 'test_exchange',
-             'expire_at': self.expire_at},
+            {'$set': {
+                'queue': 'foo', 'pattern': '*',
+                'routing_key': 'foo', 'exchange': 'test_exchange',
+                'expire_at': self.expire_at
+            }},
             upsert=True,
         )
 
@@ -457,24 +505,24 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.channel.queue_delete('foobar')
         self.assert_collection_accessed('messages.queues')
         self.assert_operation_called_with(
-            'queues', 'remove', {'_id': 'foobar'})
+            'queues', 'delete_one', {'_id': 'foobar'})
 
     def test_ensure_indexes(self):
         self.channel._ensure_indexes(self.channel.client)
 
         self.assert_operation_called_with(
-            'messages', 'ensure_index', [('expire_at', 1)],
+            'messages', 'create_index', [('expire_at', 1)],
             expireAfterSeconds=0)
 
         self.assert_operation_called_with(
-            'routing', 'ensure_index', [('expire_at', 1)],
+            'routing', 'create_index', [('expire_at', 1)],
             expireAfterSeconds=0)
 
         self.assert_operation_called_with(
-            'queues', 'ensure_index', [('expire_at', 1)], expireAfterSeconds=0)
+            'queues', 'create_index', [('expire_at', 1)], expireAfterSeconds=0)
 
-    def test_get_expire(self):
-        result = self.channel._get_expire(
+    def test_get_queue_expire(self):
+        result = self.channel._get_queue_expire(
             {'arguments': {'x-expires': 777}}, 'x-expires')
 
         self.channel.client.assert_not_called()
@@ -485,8 +533,14 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
             '_id': 'docId', 'options': {'arguments': {'x-expires': 777}},
         })
 
-        result = self.channel._get_expire('foobar', 'x-expires')
+        result = self.channel._get_queue_expire('foobar', 'x-expires')
         assert result == self.expire_at
+
+    def test_get_message_expire(self):
+        assert self.channel._get_message_expire({
+            'properties': {'expiration': 777},
+        }) == self.expire_at
+        assert self.channel._get_message_expire({}) is None
 
     def test_update_queues_expire(self):
         self.set_operation_return_value('queues', 'find_one', {
@@ -496,20 +550,17 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
 
         self.assert_collection_accessed('messages.routing', 'messages.queues')
         self.assert_operation_called_with(
-            'routing', 'update',
+            'routing', 'update_many',
             {'queue': 'foobar'},
             {'$set': {'expire_at': self.expire_at}},
-            multi=True,
         )
         self.assert_operation_called_with(
-            'queues', 'update',
+            'queues', 'update_many',
             {'_id': 'foobar'},
             {'$set': {'expire_at': self.expire_at}},
-            multi=True,
         )
 
 
-@skip.unless_module('pymongo')
 class test_mongodb_channel_calc_queue_size(BaseMongoDBChannelCase):
 
     def setup(self):
@@ -523,10 +574,19 @@ class test_mongodb_channel_calc_queue_size(BaseMongoDBChannelCase):
     # Tests
 
     def test_size(self):
-        self.set_operation_return_value('messages', 'find.count', 77)
+        self.set_operation_return_value('messages', 'count_documents', 77)
 
         result = self.channel._size('foobar')
 
         self.assert_operation_has_calls('messages', 'find', [])
 
         assert result == 0
+
+
+class test_mongodb_transport(BaseMongoDBChannelCase):
+    def setup(self):
+        self.connection = _create_mock_connection()
+
+    def test_driver_version(self):
+        version = self.connection.transport.driver_version()
+        assert version == pymongo.__version__

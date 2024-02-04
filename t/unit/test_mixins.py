@@ -1,11 +1,12 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+import socket
+from unittest.mock import Mock, patch
 
 import pytest
-import socket
-
-from case import ContextMock, Mock, patch
 
 from kombu.mixins import ConsumerMixin
+from t.mocks import ContextMock
 
 
 def Message(body, content_type='text/plain', content_encoding='utf-8'):
@@ -71,7 +72,7 @@ class test_ConsumerMixin:
 
         def se2(*args, **kwargs):
             c.should_stop = True
-            raise socket.error()
+            raise OSError()
         c.connection.drain_events.side_effect = se2
         it = c.consume(no_ack=True)
         with pytest.raises(StopIteration):

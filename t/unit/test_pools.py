@@ -1,11 +1,10 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+from unittest.mock import Mock
 
 import pytest
 
-from case import Mock
-
-from kombu import Connection, Producer
-from kombu import pools
+from kombu import Connection, Producer, pools
 from kombu.connection import ConnectionPool
 from kombu.utils.collections import eqhash
 
@@ -17,7 +16,7 @@ class test_ProducerPool:
 
         def __init__(self, *args, **kwargs):
             self.instance = Mock()
-            pools.ProducerPool.__init__(self, *args, **kwargs)
+            super().__init__(*args, **kwargs)
 
         def Producer(self, connection):
             return self.instance
@@ -142,7 +141,7 @@ class test_PoolGroup:
     def test_delitem(self):
         g = self.MyGroup()
         g['foo']
-        del(g['foo'])
+        del g['foo']
         assert 'foo' not in g
 
     def test_Connections(self):

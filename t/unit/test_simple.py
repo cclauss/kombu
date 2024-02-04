@@ -1,10 +1,11 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+from unittest.mock import Mock
 
 import pytest
 
-from case import Mock
-
 from kombu import Connection, Exchange, Queue
+from kombu.exceptions import ContentDisallowed
 
 
 class SimpleBase:
@@ -14,7 +15,7 @@ class SimpleBase:
         if not isinstance(q, Queue):
             q = self.__class__.__name__
             if name:
-                q = '%s.%s' % (q, name)
+                q = f'{q}.{name}'
         return self._Queue(q, *args, **kwargs)
 
     def _Queue(self, *args, **kwargs):
@@ -23,13 +24,10 @@ class SimpleBase:
     def setup(self):
         self.connection = Connection(transport='memory')
         self.connection.default_channel.exchange_declare('amq.direct')
-        self.q = self.Queue(None, no_ack=True)
 
     def teardown(self):
-        self.q.close()
         self.connection.close()
         self.connection = None
-        self.q = None
 
     def test_produce__consume(self):
         q = self.Queue('test_produce__consume', no_ack=True)
@@ -52,6 +50,38 @@ class SimpleBase:
         with pytest.raises(q.Empty):
             q.get(block=False)
 
+    def test_get_nowait_accept(self):
+        q = self.Queue('test_accept', serializer='pickle', accept=['json'])
+        q.put({'hello': 'SimpleSync'})
+        with pytest.raises(ContentDisallowed):
+            q.get_nowait().payload
+
+        q = self.Queue('test_accept1', serializer='json', accept=[])
+        q.put({'hello': 'SimpleSync'})
+        with pytest.raises(ContentDisallowed):
+            q.get_nowait().payload
+
+        q = self.Queue(
+            'test_accept2', serializer='pickle', accept=['json', 'pickle'])
+        q.put({'hello': 'SimpleSync'})
+        assert q.get_nowait().payload == {'hello': 'SimpleSync'}
+
+    def test_get_accept(self):
+        q = self.Queue('test_accept', serializer='pickle', accept=['json'])
+        q.put({'hello': 'SimpleSync'})
+        with pytest.raises(ContentDisallowed):
+            q.get().payload
+
+        q = self.Queue('test_accept1', serializer='pickle', accept=[])
+        q.put({'hello': 'SimpleSync'})
+        with pytest.raises(ContentDisallowed):
+            q.get().payload
+
+        q = self.Queue(
+            'test_accept2', serializer='pickle', accept=['json', 'pickle'])
+        q.put({'hello': 'SimpleSync'})
+        assert q.get().payload == {'hello': 'SimpleSync'}
+
     def test_clear(self):
         q = self.Queue('test_clear', no_ack=True)
 
@@ -63,9 +93,8 @@ class SimpleBase:
     def test_enter_exit(self):
         q = self.Queue('test_enter_exit')
         q.close = Mock()
-
-        assert q.__enter__() is q
-        q.__exit__()
+        with q as x:
+            assert x is q
         q.close.assert_called_with()
 
     def test_qsize(self):
@@ -84,8 +113,8 @@ class SimpleBase:
 
     def test_custom_Queue(self):
         n = self.__class__.__name__
-        exchange = Exchange('%s-test.custom.Queue' % (n,))
-        queue = Queue('%s-test.custom.Queue' % (n,),
+        exchange = Exchange(f'{n}-test.custom.Queue')
+        queue = Queue(f'{n}-test.custom.Queue',
                       exchange,
                       'my.routing.key')
 

@@ -4,6 +4,471 @@
  Change history
 ================
 
+.. _version-5.3.5:
+
+5.3.5
+=====
+:release-date: 12 Jan, 2024
+:release-by: Tomer Nosrati
+
+- Fix ReadTheDocs CI (#1827).
+- fix(docs): add Redis to the list of transports where SSL is supported (#1826).
+- Fixed Improper Method Call: Replaced `mktemp` (#1828).
+- Bump actions/setup-python from 4 to 5 (#1829).
+- Bump github/codeql-action from 2 to 3 (#1832).
+- fix: freeze set during ticks iter in async hub (#1830).
+- azure service bus: fix TypeError when using Managed Identities (#1825).
+- Fix unacknowledge typo in restore_visible() (#1839).
+- Changed pyup -> dependabot for updating dependencies (#1842).
+- Bump pytest from 7.4.3 to 7.4.4 (#1843).
+- Bump flake8 from 6.0.0 to 7.0.0 (#1845).
+- Bump mypy from 1.3.0 to 1.8.0 (#1844).
+- Fix crash when using global_keyprefix with a sentinel connection (#1838)
+- Fixed version_dev in docs/conf.py (#1875).
+
+.. _version-5.3.4:
+
+5.3.4
+=====
+:release-date: 16 Nov, 2023
+:release-by: Asif Saif Uddin
+
+- Use the correct protocol for SQS requests (#1807).
+
+
+.. _version-5.3.3:
+
+5.3.3
+=====
+:release-date: 6 Nov, 2023
+:release-by: Asif Saif Uddin
+
+- Raise access denied error when ack.
+- test redis 5.0.0.
+- fix azure servicebus using managed identity support (#1801).
+- Added as_uri method to MongoDB transport - Fixes #1795 (#1796).
+- Revert "[fix #1726] Use boto3 for SQS async requests (#1759)" (#1799).
+- Create a lock on cached_property if not present (#1811).
+- Bump kafka deps versions & fix integration test failures (#1818).
+- Added Python 3.12 support.
+- Fix: redis requeue concurrency bug #1800 (#1805).
+
+
+.. _version-5.3.2:
+
+5.3.2
+=====
+:release-date: 31 Aug, 2023
+:release-by: Tomer Nosrati
+
+- Reverted unwanted constraint introduced in #1629 with max_retries (#1755)
+- Doc fix (hotfix for #1755) (#1758)
+- Python3.12: fix imports in kombu/utils/objects.py (#1756)
+- [fix #1726] Use boto3 for SQS async requests (#1759)
+- docs: Remove SimpleQueue import (#1764)
+- Fixed pre-commit issues (#1773)
+- azure service bus: add managed identity support (#1641)
+- fix: Prevent redis task loss when closing connection while in poll (#1733)
+- Kombu & celery with SQS #222 (#1779)
+- syntax correction (#1780)
+
+.. _version-5.3.1:
+
+5.3.1
+=====
+:release-date: 15 Jun, 2023
+:release-by: Asif Saif Uddin
+
+- Update pycurl version.
+- Declare python 3.11 support (#1425).
+- Fix: allow deserializing any version of UUID.
+- Update PyCurl version in SQS (#1747).
+
+
+.. _version-5.3.0:
+
+5.3.0
+=====
+:release-date: 03 Jun, 2023
+:release-by: Asif Saif Uddin
+
+- Support for Kafka as transport.
+- Add fanout to filesystem (#1499).
+- Added possibility to serialize and deserialize binary messages in json (#1516).
+- Support pymongo 4.x (#1536).
+- Support redis-py 4.5.x.
+- Upgrade Azure Storage Queues transport to version 12 (#1539).
+- Add support to SQS DelaySeconds (#1567).
+- Add WATCH to prefixed complex commands.
+- Avoid losing type of UUID when serializing/deserializing (#1575).
+- Added HLEN to the list of prefixed redis commands (#1540).
+- Add managed identity support to azure storage queue (#1631).
+- Add Support of sqlalchemy v2.0.
+- Deprecate pytz and use zoneinfo (#1680)
+
+
+.. _version-5.3.0rc2:
+
+5.3.0rc2
+========
+:release-date: 31 May, 2023
+:release-by: Asif Saif Uddin
+
+- add missing zoneinfo dependency (#1732).
+- Support redis >= 4.5.2
+- Loosen urlib3 version range for botocore compat
+
+
+.. _version-5.3.0rc1:
+
+5.3.0rc1
+========
+:release-date: 24 May, 2023
+:release-by: Asif Saif Uddin
+
+- Moved to pytest-freezer (#1683).
+- Deprecate pytz and use zoneinfo (#1680).
+- handle keyerror in azureservicebus transport when message is not
+found in qos and perform basic_ack (#1691).
+- fix mongodb transport obsolete calls (#1694).
+- SQS: avoid excessive GetQueueURL calls by using cached queue url (#1621).
+- Update confluentkafka.txt version (#1727).
+- Revert back to pyro4 for now.
+
+
+.. _version-5.3.0b3:
+
+5.3.0b3
+=======
+:release-date: 20 Mar, 2023
+:release-by: Asif Saif Uddin
+
+- Use SPDX license expression in project metadata.
+- Allowing Connection.ensure() to retry on specific exceptions given by policy (#1629).
+- Redis==4.3.4 temporarilly in an attempt to avoid BC (#1634).
+- Add managed identity support to azure storage queue (#1631).
+- Support sqla v2.0 (#1651).
+- Switch to Pyro5 (#1655).
+- Remove unused _setupfuns from serialization.py.
+- Refactor: Refactor utils/json (#1659).
+- Adapt the mock to correctly mock the behaviors as implemented on Python 3.10. (Ref #1663).
+
+
+.. _version-5.3.0b2:
+
+5.3.0b2
+=======
+:release-date: 19 Oct, 2022
+:release-by: Asif Saif Uddin
+
+- fix: save QueueProperties to _queue_name_cache instead of QueueClient.
+- hub: tick delay fix (#1587).
+- Fix incompatibility with redis in disconnect() (#1589).
+- Solve Kombu filesystem transport not thread safe.
+- importlib_metadata remove deprecated entry point interfaces (#1601).
+- Allow azurestoragequeues transport to be used with Azurite emulator in docker-compose (#1611).
+
+
+.. _version-5.3.0b1:
+
+5.3.0b1
+=======
+:release-date: 1 Aug, 2022
+:release-by: Asif Saif Uddin
+
+- Add ext.py files to setup.cfg.
+- Add support to SQS DelaySeconds (#1567).
+- Add WATCH to prefixed complex commands.
+- Avoid losing type of UUID when serializing/deserializing (#1575).
+- chore: add confluentkafka to extras.
+
+.. _version-5.3.0a1:
+
+5.3.0a1
+=======
+:release-date: 29 Jun, 2022
+:release-by: Asif Saif Uddin
+
+- Add fanout to filesystem (#1499).
+- Protect set of ready tasks by lock to avoid concurrent updates. (#1489).
+- Correct documentation stating kombu uses pickle protocol version 2.
+- Use new entry_points interface.
+- Add mypy to the pipeline (#1512).
+- Added possibility to serialize and deserialize binary messages in json (#1516).
+- Bump pyupgrade version and add __future__.annotations import.
+- json.py cleaning from outdated libs (#1533).
+- bump new py-amqp to 5.1.1 (#1534).
+- add GitHub URL for PyPi.
+- Upgrade pytest to ~=7.1.1.
+- Support pymongo 4.x (#1536).
+- Initial Kafka support (#1506).
+- Upgrade Azure Storage Queues transport to version 12 (#1539).
+- move to consul2 (#1544).
+- Datetime serialization and deserialization fixed (#1515).
+- Bump redis>=4.2.2 (#1546).
+- Update sqs dependencies (#1547).
+- Added HLEN to the list of prefixed redis commands (#1540).
+- Added some type annotations.
+
+
+.. _version-5.2.4:
+
+5.2.4
+=====
+:release-date: 06 Mar, 2022
+:release-by: Asif Saif Uddin
+
+- Allow getting recoverable_connection_errors without an active transport.
+- Prevent KeyError: 'purelib' by removing INSTALLED_SCHEME hack from setup.py.
+- Revert "try pining setuptools (#1466)" (#1481).
+- Fix issue #789: Async http code not allowing for proxy config (#790).
+- Fix The incorrect times of retrying.
+- Set redelivered property for Celery with Redis (#1484).
+- Remove use of OrderedDict in various places (#1483).
+- Warn about missing hostname only when default one is available (#1488).
+- All supported versions of Python define __package__.
+- Added global_keyprefix support for pubsub clients (#1495).
+- try pytest 7 (#1497).
+- Add an option to not base64-encode SQS messages.
+- Fix SQS extract_task_name message reference.
+
+
+.. _version-5.2.3:
+
+5.2.3
+=====
+:release-date: 29 Dec, 2021
+:release-by: Asif Saif Uddin
+
+- Allow redis >= 4.0.2.
+- Fix PyPy CI jobs.
+- SQS transport: detect FIFO queue properly by checking queue URL (#1450).
+- Ensure that restore is atomic in redis transport (#1444).
+- Restrict setuptools>=59.1.1,<59.7.0.
+- Bump minimum py-amqp to v5.0.9 (#1462).
+- Reduce memory usage of Transport (#1470).
+- Prevent event loop polling on closed redis transports (and causing leak).
+- Respect connection timeout (#1458)
+- prevent redis event loop stopping on 'consumer: Cannot connect' (#1477).
+
+
+.. _version-5.2.2:
+
+5.2.2
+=====
+:release-date: 16 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Pin redis version to >= 3.4.1<4.0.0 as it is not fully compatible yet.
+
+
+.. _version-5.2.1:
+
+5.2.1
+=====
+:release-date: 8 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Bump redis version to >= 3.4.1.
+- try latest sqs dependencies ti fix security warning.
+- Tests & dependency updates
+
+.. _version-5.2.0:
+
+5.2.0
+=====
+:release-date: 5 Nov, 2021
+:release-by: Naomi Elstein
+
+- v 1.4.x (#1338).
+- stop mentioning librabbitmq (#1381).
+- Merge branch 'master' of https://github.com/celery/kombu
+- test new pytest version (#1383).
+- drop python 3.6 from CI (#1382).
+- Use ANY from unittest instead of case.mock.
+- Fix missing dependency to redis in docs requirements.
+- [pre-commit.ci] pre-commit autoupdate.
+- Remove dependency to case (#1389).
+- Fix: check redis response type.
+- [pre-commit.ci] pre-commit autoupdate (#1393).
+- py3.7+ on setup (#1392).
+- Prevent caching of oid in pidbox (#1394).
+- Added unittests for #1394 .
+- fix flake8 in kombu/asynchronous/aws/connection.py (#1397).
+- [pre-commit.ci] pre-commit autoupdate.
+- Fix test_pidbox unittests to support non-linux platforms (#1398).
+- [pre-commit.ci] pre-commit autoupdate.
+- removre bdist.
+- add python 3.10 to CI & fix other issues (#1402).
+- try to fix CI (#1407).
+- Dont failfast when pypy3 tests fail (#1408).
+- Return empty list instead of InconsistencyError when exchange table is empty (#1404).
+- [pre-commit.ci] pre-commit autoupdate.
+
+.. _version-5.2.0rc1:
+
+5.2.0rc1
+========
+:release-date: 2021-09-07 7:00 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Remove backward compatible code not used anymore (#1344).
+- Add support for setting redis username (#1351).
+- Add support for Python 3.9.
+- Use hostname from URI when server_host is None.
+- Use Python's built-in json module by default, instead of simplejson.
+- SQS Channel.predefined_queues should be {} if not defined.
+- Add global key prefix for keys set by Redis transporter (#1349).
+- fix: raise BrokenPipeError (#1231).
+- fix: add missing commands to prefix.
+- Make BrokerState Transport specific.
+- Tests & Docs cleanup.
+
+.. _version-5.1.0:
+
+5.1.0
+=====
+:release-date: 2021-05-23 7:00 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Fix queue names special characters replacement for Azure Service Bus. (#1324)
+- Add support for SQLAlchemy 1.4. (#1328)
+- Coerce seconds argument to a floating point number in ``Timer.enter_after``. (#1330)
+- Add accept parameter to SimpleQueue class. (#1140)
+- ``prepare_accept_content()`` now raises ``SerializerNotInstalled`` instead of ``KeyError``. (#1343)
+
+.. _version-5.1.0b1:
+
+5.1.0b1
+=======
+:release-date: 2021-04-01 10:30 P.M UTC+6:00
+:release-by: Asiff Saif Uddin
+
+- Wheels are no longer universal.
+- Revert "Added redis transport key_prefix from envvars".
+- Redis Transport: Small improvements of `SentinelChannel` (#1253).
+- Fix pidbox not using default channels.
+- Revert "on worker restart - restore visible regardless to time (#905)".
+- Add vine to dependencies.
+- Pin urllib3<1.26 to fix failing unittests.
+- Add timeout to producer publish (#1269).
+- Remove python2 compatibility code (#1277).
+- redis: Support Sentinel with SSL.
+- Support for Azure Service Bus 7.0.0 (#1284).
+- Allow specifying session token (#1283).
+- kombu/asynchronous/http/curl: implement _set_timeout.
+- Disable namedtuple to object feature in simplejson (#1297).
+- Update to tox docker 2.0.
+- SQS back-off policy (#1301).
+- Fixed SQS unittests.
+- Fix: non kombu json message decoding in SQS transport (#1306).
+- Add Github Actions CI (#1309).
+- Update default pickle protocol version to 4 (#1314).
+- Update connection.py (#1311).
+- Drop support for the lzma backport.
+- Drop obsolete code importing pickle (#1315).
+- Update default login method for librabbitmq and pyamqp (#936).
+- SQS Broker - handle STS authentication with AWS (#1322).
+- Min py-amqp version is v5.0.6 (#1325).
+- Numerous docs & example fixes.
+- Use a thread-safe implementation of cached_property (#1316).
+
+
+.. _version-5.0.2:
+
+5.0.2
+=====
+:release-date: 2020-09-06 6:30 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Bump required amqp version to 5.0.0.
+
+.. _version-5.0.1:
+
+5.0.1
+=====
+:release-date: 2020-08-23 19:10 P.M UTC+3:00
+:release-by: Omer Katz
+
+- Removed kombu.five from the reference documentation since it no longer exists
+- Adjusted the stable documentation's version in Sphinx's configuration since that was overlooked in the latest release
+
+.. _version-5.0.0:
+
+5.0.0
+=====
+:release-date: 2020-08-05 16:00 P.M UTC+3:00
+:release-by: Omer Katz
+
+- **BREAKING CHANGE**: Dropped support for Python 2 (#1232)
+- Add an SQS transport option for custom botocore config (#1219)
+
+.. _version-4.6.11:
+
+4.6.11
+=======
+:release-date: 2020-06-24 1.15 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Revert incompatible changes in #1193 and additional improvements (#1211)
+- Default_channel should reconnect automatically (#1209)
+
+
+.. _version-4.6.10:
+
+4.6.10
+======
+:release-date: 2020-06-03 10.45 A.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Doc improvement.
+- set _connection in _ensure_connection (#1205)
+- Fix for the issue #1172
+- reuse connection [bug fix]
+
+
+.. _version-4.6.9:
+
+4.6.9
+=====
+:release-date: 2020-06-01 14.00 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Prevent failure if AWS creds are not explicitly defined on predefined.
+- Raise RecoverableConnectionError in maybe_declare with retry on and.
+- Fix for the issue #1172 .
+- possible fix for #1174 .
+- Fix: make SQLAlchemy Channel init thread-safe
+- Added integration testing infrastructure for RabbitMQ
+- Initial redis integration tests implementation
+- SQLAlchemy transport: Use Query.with_for_update() instead of deprecated
+- Fix Consumer Encoding
+- Added Integration tests for direct, topic and fanout exchange types
+- Added TTL integration tests
+- Added integration tests for priority queues
+- fix 100% cpu usage on linux while using sqs
+- Modified Mutex to use redis LuaLock implementation
+- Fix: eliminate remaining race conditions from SQLAlchemy Channel
+- Fix connection imaybe_declare (#1196)
+- Fix for issue #1198: Celery crashes in cases where there aren’t enough
+- Ensure connection when connecting to broker
+- update pyamqp to 2.6 with optional cythonization
+
+.. _version-4.6.8:
+
+4.6.8
+=====
+:release-date: 2020-03-29 20:45 A.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Added support for health_check_interval option in broker_transport_options (#1145)
+- Added retry_on_timeout parameter to Redis Channel (#1150)
+- Added support for standard values for ssl_cert_reqs query parameter for Redis (#1139)
+- Added predefined_queues option to SQS transport (#1156)
+- Added ssl certificate verification against ca certificates when amqps is used for pyamqp transport (#1151)
+- Fix issue (#701) where kombu.transport.redis.Mutex is broken in python 3 (#1141)
+- Fix brop error in Redis Channel (#1144)
+
 .. _version-4.6.7:
 
 4.6.7
@@ -15,7 +480,7 @@
 - Add peek lock settings to be changed using transport options (#1119).
 - Fix redis health checks (#1122).
 - Reset ready before execute callback (#1126).
-- Add missing parameter queue_args in kombu.connection.SimpleBuffer (#1128) 
+- Add missing parameter queue_args in kombu.connection.SimpleBuffer (#1128)
 
 .. _version-4.6.6:
 
@@ -24,12 +489,12 @@
 :release-date: 2019-11-11 00:15 A.M UTC+6:00
 :release-by: Asif Saif Uddin
 
-- Revert _lookup_direct and related changes of redis. 
+- Revert _lookup_direct and related changes of redis.
 - Python 3.8 support
 - Fix 'NoneType' object has no attribute 'can_read' bug of redis transport
-- Issue #1019 Fix redis transport socket timeout 
+- Issue #1019 Fix redis transport socket timeout
 - Add wait timeout settings to receive queue message (#1110)
-- Bump py-amqp to 2.5.2 
+- Bump py-amqp to 2.5.2
 
 .. _version-4.6.5:
 
@@ -38,14 +503,14 @@
 :release-date: 2019-09-30 19:30 P.M UTC+6:00
 :release-by: Asif Saif Uddin
 
-- Revert _lookup api and correct redis implemetnation. 
+- Revert _lookup api and correct redis implemetnation.
 - Major overhaul of redis test cases by adding more full featured fakeredis module.
 - Add more test cases to boost coverage of kombu redis transport.
 - Refactor the producer consumer test cases to be based on original mocks and be passing
 - Fix lingering line length issue in test.
 - Sanitise url when include_password is false
 - Pinned pycurl to 7.43.0.2 as it is the latest build with wheels provided
-- Bump py-amqp to 2.5.2 
+- Bump py-amqp to 2.5.2
 
 
 .. _version-4.6.4:
@@ -57,12 +522,12 @@
 
 - Use importlib-metadata instead of pkg_resources for better performance
 - Allow users to switch URLs while omitting the resource identifier (#1032)
-- Don't stop receiving tasks on 503 SQS error. (#1064) 
+- Don't stop receiving tasks on 503 SQS error. (#1064)
 - Fix maybe declare (#1066)
 - Revert "Revert "Use SIMEMBERS instead of SMEMBERS to check for queue (Redis Broker)
 - Fix MongoDB backend to work properly with TTL (#1076)
 - Make sure that max_retries=0 is treated differently than None (#1080)
-- Bump py-amqp to 2.5.1 
+- Bump py-amqp to 2.5.1
 
 
 .. _version-4.6.3:
@@ -101,7 +566,40 @@
 :release-date: 2019-05-30 15:30 P.M UTC+6:00
 :release-by: Asif Saif Uddin
 
--
+- Dropped python 3.4
+
+- Bump py-amqp to 2.5.0
+
+- Use SIMEMBERS instead of SMEMBERS to check for queue (redis broker)
+
+  * Add `_lookup_direct` method to virtual channel. (#994)
+
+  Add possibility to optimize lookup for queue in direct
+  exchange set.
+
+  * Add `_lookup_direct` method to redis virtual channel. (#994)
+
+  Use `SISMEMBER` instead of `SMEMBERS` command to check if queue
+  exists in a set. Time complexity is increased from O(N) to O(1)
+  where N is the set cardinality.
+
+  Contributed by **Stevan Milic** and **Asif Saif Uddin**
+
+- Include priority in properties only if it's not None.
+  Since we attempt to serialize the priority property if it exists
+  in the dictionary it must be an integer.
+
+  Contributed by **Omer Katz**
+
+- Removed dangerous default mutable arguments from function
+  definitions where appropriate.
+
+  Contributed by **Todd Cook**
+
+- Codebase improvements and fixes by:
+
+  - **Omer Katz**
+  - **Asif Saif Uddin**
 
 .. _version-4.5.0:
 
@@ -493,7 +991,7 @@
 
 - Fixed string handling when using python-future module
 
-    Contributed by **John Koehl"
+    Contributed by **John Koehl**
 
 - Replaced "async" with "asynchronous" in preparation for Python 3.7
 

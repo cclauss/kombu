@@ -1,22 +1,20 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import errno
-import pytest
+from unittest.mock import ANY, Mock, call, patch
 
-from case import Mock, call, patch
+import pytest
 from vine import promise
 
+from kombu.asynchronous import ERR, READ, WRITE, Hub
 from kombu.asynchronous import hub as _hub
-from kombu.asynchronous import Hub, READ, WRITE, ERR
-from kombu.asynchronous.debug import callback_for, repr_flag, _rcb
-from kombu.asynchronous.hub import (
-    Stop, get_event_loop, set_event_loop,
-    _raise_stop_error, _dummy_context
-)
+from kombu.asynchronous.debug import _rcb, callback_for, repr_flag
+from kombu.asynchronous.hub import (Stop, _dummy_context, _raise_stop_error,
+                                    get_event_loop, set_event_loop)
 from kombu.asynchronous.semaphore import DummyLock, LaxBoundedSemaphore
 
 
-class File(object):
+class File:
 
     def __init__(self, fd):
         self.fd = fd
@@ -191,6 +189,12 @@ class test_Hub:
         assert promise() in self.hub._ready
         assert ret is promise()
 
+    def test_call_soon_uses_lock(self):
+        callback = Mock(name='callback')
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub.call_soon(callback)
+            lock.__enter__.assert_called_once()
+
     def test_call_soon__promise_argument(self):
         callback = promise(Mock(name='callback'), (1, 2, 3))
         ret = self.hub.call_soon(callback)
@@ -237,7 +241,7 @@ class test_Hub:
         poller = self.hub.poller
         self.hub.stop()
         mock_callback = Mock()
-        self.hub._ready = set([mock_callback])
+        self.hub._ready = {mock_callback}
         self.hub.close()
         poller.close.assert_called_with()
         mock_callback.assert_called_once_with()
@@ -521,6 +525,23 @@ class test_Hub:
         ticks[0].assert_called_once_with()
         ticks[1].assert_called_once_with()
 
+    def test_loop__tick_callbacks_on_ticks_change(self):
+        def callback_1():
+            ticks.remove(ticks_list[0])
+            return Mock(name='cb1')
+
+        ticks_list = [Mock(wraps=callback_1), Mock(name='cb2')]
+        ticks = set(ticks_list)
+
+        self.hub.on_tick = ticks
+        self.hub.poller.unregister = Mock()
+
+        next(self.hub.loop)
+        next(self.hub.loop)
+
+        ticks_list[0].assert_has_calls([call()])
+        ticks_list[1].assert_has_calls([call(), call()])
+
     def test_loop__todo(self):
         deferred = Mock(name='cb_deferred')
 
@@ -537,3 +558,31 @@ class test_Hub:
         callbacks[0].assert_called_once_with()
         callbacks[1].assert_called_once_with()
         deferred.assert_not_called()
+
+    def test_loop__no_todo_tick_delay(self):
+        cb = Mock(name='parent')
+        cb.todo, cb.tick, cb.poller = Mock(), Mock(), Mock()
+        cb.poller.poll.side_effect = lambda obj: ()
+        self.hub.poller = cb.poller
+        self.hub.add(2, Mock(), READ)
+        self.hub.call_soon(cb.todo)
+        self.hub.on_tick = [cb.tick]
+
+        next(self.hub.loop)
+
+        cb.assert_has_calls([
+            call.todo(),
+            call.tick(),
+            call.poller.poll(ANY),
+        ])
+
+    def test__pop_ready_pops_ready_items(self):
+        self.hub._ready.add(None)
+        ret = self.hub._pop_ready()
+        assert ret == {None}
+        assert self.hub._ready == set()
+
+    def test__pop_ready_uses_lock(self):
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub._pop_ready()
+            lock.__enter__.assert_called_once()
