@@ -1,5 +1,5 @@
-pytest==7.4.4
+hypothesis<7
+Pyro4==4.82
+pytest-freezer==0.4.8
 pytest-sugar==1.0.0
-Pyro4
-hypothesis<=6.97.4
-pytest-freezer
+pytest==8.3.2
